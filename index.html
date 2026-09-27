@@ -157,7 +157,7 @@
 
   async function loadTasks() {
     try {
-      const res = await fetch('/tasks');
+      const res = await fetch('https://my-c-backend.onrender.com/tasks');
       if (!res.ok) throw new Error('bad status');
       renderTasks(await res.json());
     } catch (err) {
