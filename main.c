@@ -140,7 +140,6 @@ static void send_response(int fd, int status_code, const char *status_text,
         "Connection: close\r\n"
         "\r\n",
         status_code, status_text, content_type, body_len);
-        status_code, status_text, content_type, body_len);
     if (hlen > 0) {
         if (send(fd, header, (size_t)hlen, 0) < 0) return;
     }
