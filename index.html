@@ -175,7 +175,7 @@
     if (!title) return;
     button.disabled = true;
     try {
-      const res = await fetch('/add', {
+      const res = await fetch('https://my-c-backend.onrender.com/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title })
