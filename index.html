@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Task Manager</title>
+<style>
+  :root {
+    --bg: #EEF0EC;
+    --ink: #1B2420;
+    --muted: #4C5951;
+    --accent: #1F6F5C;
+    --accent-dark: #17554A;
+    --rule: #D3D9CE;
+    --error: #A6402A;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 64px 24px;
+    display: flex;
+    justify-content: center;
+  }
+  main { width: 100%; max-width: 540px; }
+
+  h1 {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+    font-weight: 400;
+    font-size: 2.1rem;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+  }
+  .lede {
+    color: var(--muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    max-width: 46ch;
+    margin: 0 0 28px;
+  }
+  .rule {
+    border: none;
+    border-top: 1px solid var(--rule);
+    margin: 0 0 28px;
+  }
+
+  form.add {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+  #task-input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 13px;
+    border: 1px solid var(--rule);
+    border-radius: 7px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 0.95rem;
+    outline: none;
+  }
+  #task-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(31, 111, 92, 0.15);
+  }
+  #add-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 7px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  #add-btn:hover { background: var(--accent-dark); }
+  #add-btn:disabled { opacity: 0.55; cursor: default; }
+  #add-btn:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; }
+
+  ul#task-list { list-style: none; margin: 0; padding: 0; }
+  ul#task-list li {
+    display: flex;
+    gap: 16px;
+    align-items: baseline;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  ul#task-list li:last-child { border-bottom: none; }
+  .task-num {
+    font-family: "SF Mono", "Cascadia Mono", Consolas, "Roboto Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    font-size: 0.85rem;
+    width: 1.7em;
+    flex-shrink: 0;
+  }
+  .task-title { font-size: 0.97rem; word-break: break-word; }
+
+  .state-row { padding: 14px 0; color: var(--muted); font-size: 0.9rem; }
+  .state-row.error { color: var(--error); }
+
+  @media (max-width: 420px) {
+    body { padding: 40px 18px; }
+    h1 { font-size: 1.8rem; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Task manager</h1>
+  <p class="lede">A small list, kept by a C server and SQLite.</p>
+  <hr class="rule" />
+
+  <form class="add" id="add-form">
+    <input type="text" id="task-input" placeholder="What needs doing?" maxlength="200" autocomplete="off" />
+    <button id="add-btn" type="submit">Add</button>
+  </form>
+
+  <ul id="task-list"></ul>
+</main>
+
+<script>
+  const form = document.getElementById('add-form');
+  const input = document.getElementById('task-input');
+  const button = document.getElementById('add-btn');
+  const list = document.getElementById('task-list');
+
+  function renderTasks(tasks) {
+    list.innerHTML = '';
+    if (!tasks || tasks.length === 0) {
+      const row = document.createElement('li');
+      row.className = 'state-row';
+      row.textContent = 'Nothing here yet. Add your first task above.';
+      list.appendChild(row);
+      return;
+    }
+    tasks.forEach((task, i) => {
+      const li = document.createElement('li');
+
+      const num = document.createElement('span');
+      num.className = 'task-num';
+      num.textContent = String(i + 1).padStart(2, '0');
+
+      const title = document.createElement('span');
+      title.className = 'task-title';
+      title.textContent = task.title;
+
+      li.appendChild(num);
+      li.appendChild(title);
+      list.appendChild(li);
+    });
+  }
+
+  async function loadTasks() {
+    try {
+      const res = await fetch('/tasks');
+      if (!res.ok) throw new Error('bad status');
+      renderTasks(await res.json());
+    } catch (err) {
+      list.innerHTML = '';
+      const row = document.createElement('li');
+      row.className = 'state-row error';
+      row.textContent = "Couldn't reach the server. Make sure it's running, then reload.";
+      list.appendChild(row);
+    }
+  }
+
+  async function addTask(e) {
+    e.preventDefault();
+    const title = input.value.trim();
+    if (!title) return;
+    button.disabled = true;
+    try {
+      const res = await fetch('/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title })
+      });
+      if (!res.ok) throw new Error('bad status');
+      input.value = '';
+      await loadTasks();
+    } catch (err) {
+      alert("Couldn't add that task. Please try again.");
+    } finally {
+      button.disabled = false;
+      input.focus();
+    }
+  }
+
+  form.addEventListener('submit', addTask);
+  loadTasks();
+</script>
+</body>
+</html>
