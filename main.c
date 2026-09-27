@@ -129,13 +129,17 @@ static char *read_file(const char *path, long *out_len) {
 
 static void send_response(int fd, int status_code, const char *status_text,
                            const char *content_type, const char *body, long body_len) {
-    char header[256];
+    char header[512];
     int hlen = snprintf(header, sizeof(header),
         "HTTP/1.1 %d %s\r\n"
         "Content-Type: %s\r\n"
         "Content-Length: %ld\r\n"
+        "Access-Control-Allow-Origin: *\r\n"
+        "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+        "Access-Control-Allow-Headers: Content-Type\r\n"
         "Connection: close\r\n"
         "\r\n",
+        status_code, status_text, content_type, body_len);
         status_code, status_text, content_type, body_len);
     if (hlen > 0) {
         if (send(fd, header, (size_t)hlen, 0) < 0) return;
